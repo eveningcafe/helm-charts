@@ -81,9 +81,15 @@ spec:
                 # currently, without host pid in container, we can not nsenter with pid and can not invoke systemctl correctly.
                 nsenter -t 1 -m systemctl -- restart containerd.service
         {{- end }}
-        {{- if .Values.args }}
+        {{- if or .Values.criKeychain.enable .Values.args }}
         args:
+        {{- if .Values.criKeychain.enable }}
+          - --config
+          - /var/lib/containerd-nydus/config.toml
+        {{- end }}
+        {{- if .Values.args }}
 {{ toYaml .Values.args | indent 12 }}
+        {{- end }}
         {{- end }}
         volumeMounts:
         - name: config
@@ -96,6 +102,10 @@ spec:
           mountPropagation: Bidirectional
         - name: fuse
           mountPath: "/dev/fuse"
+        {{- if .Values.criKeychain.enable }}
+        - name: containerd-sock
+          mountPath: /run/containerd/containerd.sock
+        {{- end }}
 
         securityContext:
           privileged: true
@@ -155,4 +165,10 @@ spec:
       - name: containerd-conf
         hostPath:
           path: {{ .Values.containerRuntime.containerd.configFile }}
+      {{- end }}
+      {{- if .Values.criKeychain.enable }}
+      - name: containerd-sock
+        hostPath:
+          path: /run/containerd/containerd.sock
+          type: Socket
       {{- end }}
